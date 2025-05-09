@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: taskmate_postgres
+    environment:
+      POSTGRES_USER: taskmate
+      POSTGRES_PASSWORD: taskmate
+      POSTGRES_DB: taskmate
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskmate"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskmate_backend
+    environment:
+      DATABASE_URL: postgresql://taskmate:taskmate@postgres:5432/taskmate
+      JWT_SECRET: your_jwt_secret
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+    container_name: taskmate_frontend
+    environment:
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
+      REACT_NATIVE_PACKAGER_HOSTNAME: 0.0.0.0
+    ports:
+      - "19000:19000"
+      - "19001:19001"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
